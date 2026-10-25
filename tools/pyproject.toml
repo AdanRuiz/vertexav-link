@@ -1,0 +1,26 @@
+[project]
+name = "vertexav-tools"
+version = "0.6.0"
+description = "VertexAV Link test tools: simulated emitter, inspector and OS2L bridge"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+dependencies = ["websockets>=13", "zeroconf>=0.130"]
+
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+vertexav-sim = "vertexav.sim:main"
+vertexav-inspector = "vertexav.inspector:main"
+vertexav-os2l = "vertexav.os2l:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["vertexav"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
