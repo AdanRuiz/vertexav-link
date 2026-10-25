@@ -553,7 +553,7 @@ void Emitter::trackStructure(const QJsonObject& structure) {
     publish(msg);
 }
 
-QString Emitter::event(const QString& name, qint64 at, int deck, const QJsonObject& data) {
+QString Emitter::emitEvent(const QString& name, qint64 at, int deck, const QJsonObject& data) {
     const QString id = QStringLiteral("e-%1").arg(++m_eventCounter);
     const qint64 when = at < 0 ? now() : at;
     if (!post([=] { publishEvent(id, name, when, deck, data); })) {

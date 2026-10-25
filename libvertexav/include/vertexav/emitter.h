@@ -75,7 +75,7 @@ class Emitter : public QObject {
     void trackUnloaded(int deck);
     void trackStructure(const QJsonObject& structure);
     // Returns the event_id. at < 0 means "now".
-    QString event(const QString& name, qint64 at = -1, int deck = 0, const QJsonObject& data = QJsonObject());
+    QString emitEvent(const QString& name, qint64 at = -1, int deck = 0, const QJsonObject& data = QJsonObject());
     void cancelEvent(const QString& eventId, const QString& reason);
     void trigger(const QString& name, const QString& state, std::optional<double> value = std::nullopt,
             int deck = 0, qint64 at = -1);

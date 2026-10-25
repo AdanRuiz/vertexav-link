@@ -49,7 +49,7 @@ emitter->start();
 vertexav::Tempo t;
 t.bpm = 128; t.anchorT = emitter->now(); t.anchorBeat = 0; t.playing = true;
 emitter->setTempo(t);
-emitter->event("section.change", emitter->now() + 150000, 1,
+emitter->emitEvent("section.change", emitter->now() + 150000, 1,
                {{"from", "build"}, {"to", "drop"}, {"section_index", 2}, {"energy", 0.95}});
 ```
 

@@ -189,9 +189,9 @@ class TestVertexAV : public QObject {
         const qint64 b1 = beatSpy.at(1).at(0).toLongLong();
         QCOMPARE(b1, b0 + 1);
         // A scheduled event fires; a cancelled one does not
-        const QString keep = em.event(QStringLiteral("countdown"), em.now() + 100000, 1,
+        const QString keep = em.emitEvent(QStringLiteral("countdown"), em.now() + 100000, 1,
                 QJsonObject{{"target", "drop"}, {"beats_remaining", 1}, {"target_at", QJsonValue(qint64(em.now() + 350000))}});
-        const QString drop = em.event(QStringLiteral("section.change"), em.now() + 120000, 1,
+        const QString drop = em.emitEvent(QStringLiteral("section.change"), em.now() + 120000, 1,
                 QJsonObject{{"from", "build"}, {"to", "drop"}, {"section_index", 2}, {"energy", 0.9}});
         QTest::qWait(30);
         em.cancelEvent(drop, QStringLiteral("loop"));

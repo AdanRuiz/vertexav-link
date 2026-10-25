@@ -104,7 +104,7 @@ class Session : public QObject {
         m_playing[1] = true;
         m_fader[1] = 1.0;
         m_em->updateDeck(1, {{"playing", true}, {"fader", 1.0}});
-        m_em->event("track.start", -1, 1);
+        m_em->emitEvent("track.start", -1, 1);
         m_timer.start(5);
     }
 
@@ -139,14 +139,14 @@ class Session : public QObject {
             if (rel >= 0 && !m_playing[b]) {
                 m_playing[b] = true;
                 m_em->updateDeck(b, {{"playing", true}, {"position_beat", 0.0}, {"position_s", 0.05}});
-                m_em->event("track.start", -1, b);
+                m_em->emitEvent("track.start", -1, b);
             }
             m_fader[b] = std::clamp(rel / 16.0, 0.0, 1.0);
             m_fader[a] = std::clamp(1.0 - (rel - 16.0) / 16.0, 0.0, 1.0);
             if (rel >= 36 && m_playing[a]) {
                 m_playing[a] = false;
                 m_em->updateDeck(a, {{"playing", false}});
-                m_em->event("track.stop", -1, a, {{"kind", "pause"}});
+                m_em->emitEvent("track.stop", -1, a, {{"kind", "pause"}});
                 m_onAir = b;
                 m_mixing = false;
             }
@@ -162,7 +162,7 @@ class Session : public QObject {
             m_em->updateMix(r.mix);
         }
         for (const MixEvent& e : r.events) {
-            m_em->event(e.name, -1, e.deck, e.data);
+            m_em->emitEvent(e.name, -1, e.deck, e.data);
         }
         if (r.onAirChanged) {
             m_em->updateDeck(r.onAirOld, {{"on_air", false}});
@@ -206,11 +206,11 @@ class Session : public QObject {
                 }
                 m_announced.insert(key);
                 if (n == 0) {
-                    m_em->event("section.change", at, d,
+                    m_em->emitEvent("section.change", at, d,
                             {{"from", kSections[idx - 1].role}, {"to", kSections[idx].role},
                                     {"section_index", idx}, {"energy", kSections[idx].energy}});
                 } else {
-                    m_em->event("countdown", at, d,
+                    m_em->emitEvent("countdown", at, d,
                             {{"target", kSections[idx].role}, {"beats_remaining", n},
                                     {"target_at", QJsonValue(static_cast<qint64>(
                                                           m_tempo.timeOfBeat(start + m_offset[d])))}});
