@@ -243,9 +243,10 @@ class Receiver:
         self.security_seen[emitter.get("id")] = mode
         if self.cfg.own_id and self.cfg.own_id in (emitter.get("path") or []):
             await self._fatal("loop_detected", "Nuestro id está en emitter.path")
+        # The emitter numbers packets per connection: start the windows again.
+        self.windows.clear()
         if welcome.get("session_key") != self.session_key:
-            # New emitter session: forget sequence state (§8.3) and clock samples.
-            self.windows.clear()
+            # New emitter session: forget clock samples and tempo too (§8.3).
             self.sync = ClockSync()
             self.follower = TempoFollower()
         self.session_key = welcome.get("session_key")

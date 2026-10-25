@@ -262,7 +262,8 @@ bool Emitter::post(F&& f) {
 }
 
 Emitter::Emitter(const EmitterConfig& config, QObject* parent)
-        : QObject(parent), m_cfg(config) {
+        : QObject(parent), m_cfg(config), m_rtTimer(this), m_hkTimer(this) {
+    // The timers are children so they follow the emitter when it is moved to another thread.
     m_id = m_cfg.id.isEmpty() ? QStringLiteral("vx-") + randomHex(4) : m_cfg.id;
     m_path = m_cfg.upstreamPath;
     m_path.append(m_id);

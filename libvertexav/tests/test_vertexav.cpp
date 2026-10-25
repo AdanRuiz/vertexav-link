@@ -2,6 +2,7 @@
 #include <QJsonDocument>
 #include <QSignalSpy>
 #include <QTcpSocket>
+#include <QThread>
 #include <QtTest>
 
 #include "vertexav/vertexav.h"
@@ -201,6 +202,41 @@ class TestVertexAV : public QObject {
         QCOMPARE(em.receiverCount(), 1);
         rx.stop();
         QTRY_COMPARE_WITH_TIMEOUT(em.receiverCount(), 0, 2000);
+    }
+
+    void emitterInOwnThread() {
+        // Regression: Mixxx runs the emitter in its own QThread; its timers must follow it.
+        EmitterConfig ec;
+        ec.host = QHostAddress::LocalHost;
+        ec.port = 0;
+        ec.udpPort = 0;
+        ec.announce = false;
+        QThread thread;
+        auto* em = new Emitter(ec);
+        em->moveToThread(&thread);
+        thread.start();
+        bool ok = false;
+        QMetaObject::invokeMethod(em, [em, &ok] { ok = em->start(); }, Qt::BlockingQueuedConnection);
+        QVERIFY(ok);
+        Tempo t;
+        t.bpm = 240;
+        t.anchorT = em->now();
+        t.playing = true;
+        em->setTempo(t); // called from another thread: queued
+        ReceiverConfig rc;
+        rc.port = em->port();
+        rc.reconnect = false;
+        Receiver rx(rc);
+        QSignalSpy beatSpy(&rx, &Receiver::beat);
+        QSignalSpy lost(&rx, &Receiver::disconnected);
+        rx.start();
+        QTRY_VERIFY_WITH_TIMEOUT(beatSpy.count() >= 4, 6000);
+        QTest::qWait(3500); // longer than the heartbeat timeout
+        QCOMPARE(lost.count(), 0);
+        rx.stop();
+        QMetaObject::invokeMethod(em, [em] { em->stop(); delete em; }, Qt::BlockingQueuedConnection);
+        thread.quit();
+        thread.wait();
     }
 
     void loopbackAuthSession() {

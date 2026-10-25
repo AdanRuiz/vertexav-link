@@ -197,6 +197,7 @@ class Inspector:
         if self.log:
             self.log.write(json.dumps({"rx_us": self.rx.local_now(), "dir": direction, "msg": msg},
                                       ensure_ascii=False) + "\n")
+            self.log.flush()  # readable while the session is being recorded
 
     def on_sent(self, msg: dict) -> None:
         self.checker.on_sent(msg)
@@ -214,6 +215,11 @@ class Inspector:
             self.report(Issue("error", "mensaje que no es objeto JSON", "§8.1"), "control")
             return
         mtype = msg.get("type")
+        if mtype == "welcome":
+            # New connection: seq and session state start again.
+            self.checker = SessionChecker()
+            if self.args.topics:
+                self.checker.on_sent({"type": "subscribe", "topics": self.args.topics.split(",")})
         self.counts[mtype] += 1
         self._record("in", msg)
         issues = validate_message(msg, "e2r") + self.checker.check(msg, time.monotonic())

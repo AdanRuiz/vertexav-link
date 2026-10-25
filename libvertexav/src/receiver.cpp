@@ -42,7 +42,12 @@ QString majorOf(const QString& v) {
 } // namespace
 
 Receiver::Receiver(const ReceiverConfig& config, QObject* parent)
-        : QObject(parent), m_cfg(config) {
+        : QObject(parent),
+          m_cfg(config),
+          m_pingTimer(this),
+          m_heartbeatTimer(this),
+          m_beatTimer(this),
+          m_reconnectTimer(this) {
     if (m_cfg.clientId.isEmpty()) {
         m_cfg.clientId = QStringLiteral("rx-") + QString::fromLatin1(security::randomBytes(4).toHex());
     }
@@ -272,9 +277,10 @@ void Receiver::handleWelcome(const QJsonObject& msg) {
         }
     }
     const quint32 key = static_cast<quint32>(asInt(msg.value(QStringLiteral("session_key")), 0));
+    // The emitter numbers packets per connection: start the windows again.
+    m_windows.clear();
     if (!m_sessionKey || *m_sessionKey != key) {
-        // New emitter session: forget sequences, clock and tempo (§8.3).
-        m_windows.clear();
+        // New emitter session: forget clock and tempo too (§8.3).
         m_sync = ClockSync();
         m_follower.reset();
         m_tempo.reset();
