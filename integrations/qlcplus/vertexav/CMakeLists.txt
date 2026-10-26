@@ -10,7 +10,9 @@ cmake_minimum_required(VERSION 3.16)
 
 set(module_name "vertexavplugin")
 
-if(NOT DEFINED QLC_PLUGIN_TYPE)
+# Inside the QLC+ tree, variables.cmake has set PLUGINDIR (QLC+ 5.3.0 and later; only the
+# versions after 5.3.0 also set QLC_PLUGIN_TYPE).
+if(NOT DEFINED PLUGINDIR)
   project(qlcplus-vertexav LANGUAGES CXX)
   set(CMAKE_CXX_STANDARD 17)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,6 +32,9 @@ if(NOT DEFINED QLC_PLUGIN_TYPE)
   set(VERTEXAV_INTERFACES_DIR ${QLCPLUS_SOURCE_DIR}/plugins/interfaces)
   set(VERTEXAV_STANDALONE ON)
 else()
+  if(NOT DEFINED QLC_PLUGIN_TYPE)
+    set(QLC_PLUGIN_TYPE SHARED)
+  endif()
   set(VERTEXAV_INTERFACES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../interfaces)
   set(VERTEXAV_STANDALONE OFF)
 endif()
@@ -48,6 +53,18 @@ set(VERTEXAV_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
 add_subdirectory(${VERTEXAV_LIB_DIR} ${CMAKE_CURRENT_BINARY_DIR}/libvertexav)
 
 add_library(${module_name} ${QLC_PLUGIN_TYPE})
+
+# QLC+ after 5.3.0 changed the plugin interface (new RDM methods). Record which one these
+# headers have, so the plugin can refuse to run in a QLC+ with the other interface.
+file(READ ${VERTEXAV_INTERFACES_DIR}/qlcioplugin.h VERTEXAV_IFACE_HEADER)
+if(VERTEXAV_IFACE_HEADER MATCHES "sendRDMFrame")
+  set(VERTEXAV_QLC_NEW_IFACE 1)
+  message(STATUS "VertexAV: QLC+ plugin interface after 5.3.0")
+else()
+  set(VERTEXAV_QLC_NEW_IFACE 0)
+  message(STATUS "VertexAV: QLC+ 5.3.0 plugin interface")
+endif()
+target_compile_definitions(${module_name} PRIVATE VERTEXAV_QLC_NEW_IFACE=${VERTEXAV_QLC_NEW_IFACE})
 target_sources(${module_name} PRIVATE
   ${VERTEXAV_INTERFACES_DIR}/qlcioplugin.cpp ${VERTEXAV_INTERFACES_DIR}/qlcioplugin.h
   vertexavbridge.cpp vertexavbridge.h

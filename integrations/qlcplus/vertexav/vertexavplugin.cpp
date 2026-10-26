@@ -7,14 +7,26 @@
 
 #include "vertexavplugin.h"
 
+#include <QCoreApplication>
+#include <QDebug>
 #include <QSettings>
 #include <QThread>
 #include <QUuid>
+#include <QVersionNumber>
 
 #include "vertexavchannels.h"
 #include "vertexavconfiguration.h"
 
 #define SETTINGS_GROUP "VertexAVPlugin"
+
+// QLC+ 5.3.0 is the oldest supported version. The versions after it change the plugin
+// interface (new RDM methods), so a plugin only loads safely in the QLC+ it was built for.
+// CMake sets VERTEXAV_QLC_NEW_IFACE when the interface headers have the new RDM methods.
+#ifndef VERTEXAV_QLC_NEW_IFACE
+#define VERTEXAV_QLC_NEW_IFACE 0
+#endif
+// Normalized (trailing zeros dropped) like the parsed version, so 5.3.0 == 5.3.
+static const QVersionNumber kMinQlcVersion = QVersionNumber(5, 3, 0).normalized();
 
 VertexAVPlugin::~VertexAVPlugin()
 {
@@ -47,6 +59,33 @@ void VertexAVPlugin::init()
     }
     s.endGroup();
     m_status = tr("Not active");
+    checkHostVersion();
+}
+
+void VertexAVPlugin::checkHostVersion()
+{
+    // QLC+ 5 sets the application version (for example "5.3.0" or "5.3.1 GIT abc123").
+    // QLC+ 4 leaves it empty; it shares the plugin interface of its own source tree.
+    const QString text = QCoreApplication::applicationVersion();
+    if (text.isEmpty())
+        return;
+    const QVersionNumber v = QVersionNumber::fromString(text).normalized();
+    if (v.isNull())
+        return;
+    const bool newInterface = VERTEXAV_QLC_NEW_IFACE;
+    if (v < kMinQlcVersion)
+        m_incompatible = tr("QLC+ %1 is too old: the VertexAV Link plugin needs QLC+ 5.3.0 or newer.").arg(text);
+    else if (!newInterface && v > kMinQlcVersion)
+        m_incompatible = tr("This VertexAV Link plugin was built for QLC+ 5.3.0 and this is QLC+ %1. "
+                            "Use the plugin built for this version.").arg(text);
+    else if (newInterface && v == kMinQlcVersion)
+        m_incompatible = tr("This VertexAV Link plugin was built for a newer QLC+ than %1. "
+                            "Use the plugin built for QLC+ 5.3.0.").arg(text);
+    if (!m_incompatible.isEmpty())
+    {
+        qWarning() << "[VertexAV]" << m_incompatible;
+        m_status = m_incompatible;
+    }
 }
 
 QString VertexAVPlugin::name() const
@@ -71,12 +110,14 @@ QString VertexAVPlugin::pluginInfo() const
     str += tr("Select <b>Plugin</b> as the beat generator in the Input/Output settings so "
               "functions in Beats tempo follow the DJ without tapping.");
     str += QStringLiteral("</P>");
+    if (!m_incompatible.isEmpty())
+        str += QStringLiteral("<P><b>%1</b></P>").arg(m_incompatible.toHtmlEscaped());
     return str;
 }
 
 bool VertexAVPlugin::openInput(quint32 input, quint32 universe)
 {
-    if (input != 0)
+    if (input != 0 || !m_incompatible.isEmpty())
         return false;
     m_universe = universe;
     addToMap(universe, input, Input);
@@ -112,6 +153,8 @@ void VertexAVPlugin::closeInput(quint32 input, quint32 universe)
 
 QStringList VertexAVPlugin::inputs()
 {
+    if (!m_incompatible.isEmpty())
+        return QStringList();
     return QStringList() << QStringLiteral("VertexAV Link");
 }
 

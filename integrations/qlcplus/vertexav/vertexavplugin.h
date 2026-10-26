@@ -63,6 +63,11 @@ private slots:
 private:
     void restart();
     void saveDefaults() const;
+    void checkHostVersion();
+
+    // Set when the running QLC+ has a different plugin interface than the one this
+    // plugin was built against: the plugin then offers no input line.
+    QString m_incompatible;
 
     quint32 m_universe = UINT_MAX;
     VertexAVSettings m_settings;

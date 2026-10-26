@@ -42,6 +42,10 @@ class Recorder : public QObject {
 int main(int argc, char** argv) {
     QCoreApplication app(argc, argv);
     app.setOrganizationName(QStringLiteral("vertexav-harness"));
+    // Pretend to be a given QLC+ version, to test the plugin's version check.
+    const QByteArray fakeVersion = qgetenv("VERTEXAV_FAKE_QLC_VERSION");
+    if (!fakeVersion.isEmpty())
+        app.setApplicationVersion(QString::fromUtf8(fakeVersion));
     const QString host = argc > 1 ? QString::fromLocal8Bit(argv[1]) : QStringLiteral("127.0.0.1");
     const quint16 port = argc > 2 ? quint16(atoi(argv[2])) : 9470;
     const int seconds = argc > 3 ? atoi(argv[3]) : 20;
@@ -57,6 +61,12 @@ int main(int argc, char** argv) {
     plugin->init();
     printf("plugin '%s' capabilities=%d inputs=%s\n", qPrintable(plugin->name()), plugin->capabilities(),
             qPrintable(plugin->inputs().join(QLatin1Char(','))));
+    if (!fakeVersion.isEmpty()) {
+        // Version check only: report whether the plugin offers its input line and stop.
+        printf("version-check %s -> %s\n", fakeVersion.constData(),
+               plugin->inputs().isEmpty() ? "refused" : "accepted");
+        return 0;
+    }
     if (!(plugin->capabilities() & QLCIOPlugin::Beats)) {
         fprintf(stderr, "plugin does not declare the Beats capability\n");
         return 3;

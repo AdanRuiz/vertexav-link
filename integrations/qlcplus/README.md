@@ -14,6 +14,21 @@ simulador `vertexav.sim` o `vxemit`). Cubre la fase 4 del plan:
 Usa [libvertexav](../../libvertexav) en un hilo propio, así que la sincronización de reloj no
 depende de la carga de la interfaz.
 
+## Versiones de QLC+
+
+Necesita **QLC+ 5.3.0 o posterior**. Las versiones de QLC+ después de la 5.3.0 cambian la
+interfaz de los plugins (funciones de RDM nuevas), así que el plugin solo es compatible con el
+QLC+ para el que se compiló:
+
+- **QLC+ 5.3.0 oficial:** compila contra el código de la etiqueta `QLC+_5.3.0` (el CI del fork
+  lo hace en la rama `vertexav-link-5.3.0` y publica `vertexavplugin.dll` aparte) y copia el
+  archivo en la carpeta `Plugins` de QLC+.
+- **QLC+ más reciente o compilado desde la rama principal:** compila contra ese mismo código.
+
+Al compilar se detecta qué interfaz tienen las cabeceras. Si el QLC+ en marcha tiene la otra,
+o es anterior a 5.3.0, el plugin no ofrece su entrada y explica el motivo en su información
+y en el registro de QLC+, en vez de arriesgarse a cerrar el programa.
+
 ## Compilar dentro de QLC+
 
 ```sh
