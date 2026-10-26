@@ -91,6 +91,14 @@ if(NOT VERTEXAV_STANDALONE)
             DESTINATION ${METAINFODIR})
   endif()
 else()
+  if(WIN32)
+    # Same file name as inside the QLC+ tree, and the GCC runtime linked in, so the DLL does
+    # not depend on the libstdc++ version shipped with the QLC+ it is copied into.
+    set_target_properties(${module_name} PROPERTIES PREFIX "")
+    if(MINGW)
+      target_link_options(${module_name} PRIVATE -static-libgcc -static-libstdc++)
+    endif()
+  endif()
   # Test harness: loads the plugin like QLC+ does and records its input channels.
   add_executable(vertexav_plugin_harness ${CMAKE_CURRENT_SOURCE_DIR}/../test/pluginharness.cpp
     ${VERTEXAV_INTERFACES_DIR}/qlcioplugin.cpp)

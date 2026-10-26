@@ -1,0 +1,90 @@
+# Builds only the VertexAV Link QLC+ plugin for Windows x64 (a few minutes, no full QLC+
+# build). The plugin must match the plugin interface of the QLC+ it is copied into, so the
+# QLC+ source ref is an input (default: QLC+ 5.3.0, which also matches 5.3.0 GIT builds
+# such as a124abe).
+name: QLC+ plugin (Windows)
+
+on:
+  workflow_dispatch:
+    inputs:
+      qlcplus_ref:
+        description: "QLC+ tag or commit to build against"
+        default: "QLC+_5.3.0"
+  push:
+    paths:
+      - "integrations/qlcplus/**"
+      - "libvertexav/**"
+      - ".github/workflows/qlcplus-plugin.yml"
+
+env:
+  QT_VERSION: "6.10.2"
+  QLCPLUS_REF: ${{ inputs.qlcplus_ref || 'QLC+_5.3.0' }}
+
+jobs:
+  plugin-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout vertexav-link
+        uses: actions/checkout@v4
+
+      - name: Checkout QLC+ plugin interface
+        uses: actions/checkout@v4
+        with:
+          repository: mcallegari/qlcplus
+          ref: ${{ env.QLCPLUS_REF }}
+          path: qlcplus
+          sparse-checkout: plugins/interfaces
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: windows
+          target: desktop
+          arch: win64_mingw
+          dir: ${{ github.workspace }}/qt/
+          cache: true
+
+      - name: Install MSYS2 MinGW (same toolchain as the QLC+ Windows builds)
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: mingw64
+          release: true
+          update: false
+          path-type: inherit
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+
+      - name: Build
+        shell: msys2 {0}
+        run: |
+          gcc --version | head -1
+          cmake -S integrations/qlcplus/vertexav -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DQLCPLUS_SOURCE_DIR="$(cygpath -m "$PWD/qlcplus")" \
+            -DCMAKE_PREFIX_PATH="$(cygpath -m "$QT_ROOT_DIR")/lib/cmake"
+          cmake --build build
+          ls -la build/*.dll build/*.exe
+
+      - name: Check the version check
+        shell: msys2 {0}
+        run: |
+          set -e
+          check() {
+            out=$(VERTEXAV_FAKE_QLC_VERSION="$1" ./build/vertexav_plugin_harness 2>&1 | grep version-check)
+            echo "$out"
+            echo "$out" | grep -q "> $2"
+          }
+          check "5.3.0 GIT a124abe" accepted
+          check "5.3.0" accepted
+          check "5.2.2" refused
+          check "5.3.1 GIT 7b75b7a" refused
+          echo "Imports:"; objdump -p build/vertexavplugin.dll | grep "DLL Name"
+
+      - name: Upload plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: vertexavplugin-qlcplus-5.3.0-windows-x64
+          path: build/vertexavplugin.dll
+          if-no-files-found: error
